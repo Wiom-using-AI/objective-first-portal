@@ -133,7 +133,10 @@ function PairCard({ pair }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900">{pair.project_name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-gray-900">{pair.project_name}</h3>
+          {pair.fuzzy && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">fuzzy match</span>}
+        </div>
         <span className={`text-xs px-3 py-1 rounded-full text-white font-bold ${scoreColor}`}>
           {scoreLabel}
         </span>

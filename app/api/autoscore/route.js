@@ -1,31 +1,32 @@
 import { NextResponse } from 'next/server';
 import getDb from '../../../lib/db';
-import { detectCrossFlPairs, getUnscoredPairs, scoreObjectivePair } from '../../../lib/autoscore';
+import { detectAllPairs, getUnscoredPairs, scoreObjectivePair } from '../../../lib/autoscore';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET: Return all cross-FL pairs and their scores (auto-detected).
+ * GET: Return all cross-FL pairs (exact + fuzzy name matches) and their scores.
  */
 export async function GET() {
   const db = getDb();
 
-  const pairs = detectCrossFlPairs(db);
+  const pairs = await detectAllPairs(db);
   const scores = db.prepare('SELECT * FROM alignment_scores ORDER BY scored_at DESC').all();
 
-  // Build a lookup of scored pairs
   const scoredMap = {};
   for (const s of scores) {
     scoredMap[`${s.submission_a_id}-${s.submission_b_id}`] = s;
   }
 
-  // Merge pairs with scores
   const results = pairs.map(p => ({
-    project_name: p.project_name,
-    fl_a: { name: p.a_name, function: p.a_function, objective: p.a_objective, metric: p.a_metric },
-    fl_b: { name: p.b_name, function: p.b_function, objective: p.b_objective, metric: p.b_metric },
+    project_name: p.a_project === p.b_project
+      ? p.a_project
+      : `${p.a_project} / ${p.b_project}`,
+    fl_a: { name: p.a_name, function: p.a_function, objective: p.a_objective, metric: p.a_metric, project: p.a_project },
+    fl_b: { name: p.b_name, function: p.b_function, objective: p.b_objective, metric: p.b_metric, project: p.b_project },
     submission_a_id: p.a_id,
     submission_b_id: p.b_id,
+    fuzzy: (p.a_project || '').toLowerCase().trim() !== (p.b_project || '').toLowerCase().trim(),
     score: scoredMap[`${p.a_id}-${p.b_id}`] || null,
   }));
 
@@ -36,16 +37,16 @@ export async function GET() {
 }
 
 /**
- * POST: Trigger auto-scoring for all unscored cross-FL pairs.
+ * POST: Trigger auto-scoring for all unscored pairs.
  */
 export async function POST() {
   const db = getDb();
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
+  if (!process.env.WIOM_PORTAL_ANTHROPIC_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: 'WIOM_PORTAL_ANTHROPIC_KEY not configured' }, { status: 500 });
   }
 
-  const pairs = detectCrossFlPairs(db);
+  const pairs = await detectAllPairs(db);
   const unscored = getUnscoredPairs(db, pairs);
 
   if (unscored.length === 0) {
@@ -64,24 +65,28 @@ export async function POST() {
   const results = [];
 
   for (const p of unscored) {
+    const displayName = (p.a_project || '').toLowerCase().trim() === (p.b_project || '').toLowerCase().trim()
+      ? p.a_project
+      : `${p.a_project} / ${p.b_project}`;
+
     try {
       const result = await scoreObjectivePair(
-        p.project_name,
+        p.a_project, p.b_project,
         { name: p.a_name, function: p.a_function, objective: p.a_objective, success_metric: p.a_metric },
         { name: p.b_name, function: p.b_function, objective: p.b_objective, success_metric: p.b_metric }
       );
 
       insert.run(
-        p.project_name, p.a_id, p.b_id,
+        displayName, p.a_id, p.b_id,
         p.a_name, p.a_function, p.a_objective, p.a_metric,
         p.b_name, p.b_function, p.b_objective, p.b_metric,
         result.score, result.rationale
       );
 
-      results.push({ project: p.project_name, score: result.score, rationale: result.rationale });
+      results.push({ project: displayName, score: result.score, rationale: result.rationale });
       scored++;
     } catch (err) {
-      results.push({ project: p.project_name, error: err.message });
+      results.push({ project: displayName, error: err.message });
     }
   }
 
