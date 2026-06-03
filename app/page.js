@@ -1,208 +1,149 @@
-import { getDashboardMetrics, getObjectiveNotes, getAlignmentScores } from '../lib/actions';
+import getDb from '../lib/db';
 
 export const dynamic = 'force-dynamic';
 
+function getMetrics() {
+  const db = getDb();
+  const totalSubmitters = db.prepare('SELECT COUNT(DISTINCT submitter_name) as c FROM submissions').get();
+  const totalProjects = db.prepare('SELECT COUNT(*) as c FROM submissions').get();
+  const totalNotes = db.prepare("SELECT COUNT(*) as c FROM objective_notes WHERE status = 'active'").get();
+  const crossFlProjects = db.prepare('SELECT COUNT(*) as c FROM submissions WHERE is_cross_fl = 1').get();
+
+  const scores = db.prepare('SELECT score, COUNT(*) as c FROM alignment_scores GROUP BY score').all();
+  const scoreMap = { green: 0, amber: 0, red: 0 };
+  for (const s of scores) scoreMap[s.score] = s.c;
+  const totalScored = scoreMap.green + scoreMap.amber + scoreMap.red;
+
+  const recentSubmissions = db.prepare(`
+    SELECT submitter_name, submitter_function, COUNT(*) as project_count, MAX(submitted_at) as last_submitted
+    FROM submissions GROUP BY submitter_name ORDER BY last_submitted DESC LIMIT 10
+  `).all();
+
+  const recentNotes = db.prepare("SELECT * FROM objective_notes WHERE status = 'active' ORDER BY last_updated DESC LIMIT 5").all();
+
+  return {
+    flsSubmitted: totalSubmitters.c,
+    totalProjects: totalProjects.c,
+    activeNotes: totalNotes.c,
+    crossFlProjects: crossFlProjects.c,
+    scoreMap,
+    totalScored,
+    lateralPct: totalScored > 0 ? Math.round((scoreMap.green / totalScored) * 100) : null,
+    recentSubmissions,
+    recentNotes,
+  };
+}
+
 export default async function Dashboard() {
-  const metrics = await getDashboardMetrics();
-  const recentNotes = await getObjectiveNotes();
-  const recentScores = await getAlignmentScores();
+  const m = await getMetrics();
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-[#102A43]">Objective First Dashboard</h1>
-        <p className="text-[#555555] mt-1">Measuring how objectives flow across Wiom — from source to execution.</p>
+        <h1 className="text-2xl font-bold text-[#102A43]">Dashboard</h1>
+        <p className="text-sm text-[#555555] mt-1">Objective conduction across Wiom — are objectives surviving handoffs?</p>
       </div>
 
-      {/* Thesis Banner */}
-      <div className="bg-[#102A43] text-white rounded-xl p-6 border-l-4 border-[#1F6FB2]">
-        <p className="text-sm font-semibold text-[#1F6FB2] mb-1">THESIS</p>
-        <p className="text-base leading-relaxed">
-          Wiom does not have an objective-generation problem. Wiom has an objective-CONDUCTION problem —
-          the objective is clean at the source and decays as it travels across handoffs.
-        </p>
-      </div>
-
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          label="FLs Submitted"
-          value={metrics.flsSubmitted}
-          sub="unique FLs completed blind submission"
-          color="blue"
-        />
-        <MetricCard
-          label="Projects Submitted"
-          value={metrics.totalProjectSubmissions}
-          sub="total project entries across all FLs"
-          color="blue"
-        />
-        <MetricCard
-          label="Active Objective Notes"
-          value={metrics.activeNotes}
-          sub="projects with a live Objective Note"
-          color="green"
-        />
-        <MetricCard
+      {/* Key Numbers */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard value={m.flsSubmitted} label="FLs Submitted" />
+        <StatCard value={m.totalProjects} label="Projects Logged" />
+        <StatCard value={m.activeNotes} label="Objective Notes" />
+        <StatCard
+          value={m.lateralPct !== null ? `${m.lateralPct}%` : '—'}
           label="Lateral Alignment"
-          value={metrics.lateralAlignmentPct !== null ? `${metrics.lateralAlignmentPct}%` : '---'}
-          sub={metrics.totalScored > 0 ? `${metrics.totalScored} cross-FL projects scored` : 'no scores yet'}
-          color={metrics.lateralAlignmentPct >= 70 ? 'green' : metrics.lateralAlignmentPct >= 40 ? 'amber' : 'red'}
+          sub={m.totalScored > 0 ? `${m.totalScored} scored` : 'awaiting scores'}
+          highlight={m.lateralPct !== null}
         />
       </div>
 
-      {/* Three Decay Scores */}
-      <div>
-        <h2 className="text-xl font-bold text-[#102A43] mb-4">The Three Decay Scores</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <DecayCard
-            title="Top-down Fidelity"
-            description="Sponsor vs FL objective match"
-            lossPoint="Loss point 1"
-            status={metrics.lateralAlignmentPct !== null ? 'measuring' : 'awaiting data'}
-          />
-          <DecayCard
-            title="Lateral Alignment"
-            description="% of cross-FL projects where FLs' objectives match"
-            lossPoint="Loss point 2"
-            value={metrics.lateralAlignmentPct}
-            scoreBreakdown={metrics.alignmentScores}
-            totalScored={metrics.totalScored}
-            status={metrics.totalScored > 0 ? 'measuring' : 'awaiting data'}
-          />
-          <DecayCard
-            title="Downstream Fidelity"
-            description="FL vs team objective match"
-            lossPoint="Loss point 3"
-            status="next phase"
-          />
-        </div>
-      </div>
-
-      {/* Alignment Score Breakdown */}
-      {metrics.totalScored > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-[#102A43] mb-4">Alignment Score Breakdown</h2>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-8">
-              <ScoreBar label="Green (match)" count={metrics.alignmentScores.green} total={metrics.totalScored} color="bg-[#1E7A3C]" />
-              <ScoreBar label="Amber (partial)" count={metrics.alignmentScores.amber} total={metrics.totalScored} color="bg-amber-500" />
-              <ScoreBar label="Red (different)" count={metrics.alignmentScores.red} total={metrics.totalScored} color="bg-[#A32A2A]" />
-            </div>
+      {/* Alignment Scores (if any) */}
+      {m.totalScored > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-[#102A43] uppercase tracking-wide mb-4">Alignment Breakdown</h2>
+          <div className="flex gap-6">
+            <ScoreBlock color="bg-[#1E7A3C]" label="Green" sublabel="Match" count={m.scoreMap.green} total={m.totalScored} />
+            <ScoreBlock color="bg-amber-500" label="Amber" sublabel="Partial" count={m.scoreMap.amber} total={m.totalScored} />
+            <ScoreBlock color="bg-[#A32A2A]" label="Red" sublabel="Different" count={m.scoreMap.red} total={m.totalScored} />
           </div>
         </div>
       )}
 
-      {/* Recent Activity */}
+      {/* Two columns: Who submitted + Recent Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <h2 className="text-xl font-bold text-[#102A43] mb-4">Recent Objective Notes</h2>
-          {recentNotes.length === 0 ? (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 text-center text-[#555555]">
-              No objective notes yet. <a href="/projects/new" className="text-[#1F6FB2] underline">Create the first one.</a>
-            </div>
+        {/* Submissions */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-[#102A43] uppercase tracking-wide mb-4">Who Has Submitted</h2>
+          {m.recentSubmissions.length === 0 ? (
+            <p className="text-sm text-[#555555]">No submissions yet. <a href="/submit" className="text-[#1F6FB2] underline">Start here.</a></p>
           ) : (
-            <div className="space-y-3">
-              {recentNotes.slice(0, 5).map(n => (
-                <a key={n.id} href={`/projects/${n.id}`} className="block bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:border-[#1F6FB2] transition-colors">
-                  <div className="font-semibold text-[#102A43]">{n.project_name}</div>
-                  <p className="text-sm text-[#555555] mt-1 line-clamp-1">{n.objective}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-gray-400">
-                    <span>Owner: {n.owner_name || 'Unassigned'}</span>
-                    <span>Updated: {new Date(n.last_updated).toLocaleDateString()}</span>
+            <div className="space-y-2">
+              {m.recentSubmissions.map((s, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div>
+                    <span className="text-sm font-medium text-[#102A43]">{s.submitter_name}</span>
+                    {s.submitter_function && (
+                      <span className="ml-2 text-xs bg-[#EAF1F8] text-[#1F6FB2] px-2 py-0.5 rounded">{s.submitter_function}</span>
+                    )}
                   </div>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h2 className="text-xl font-bold text-[#102A43] mb-4">Recent Alignment Scores</h2>
-          {recentScores.length === 0 ? (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 text-center text-[#555555]">
-              No alignment scores yet. <a href="/scoring" className="text-[#1F6FB2] underline">Start scoring.</a>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentScores.slice(0, 5).map(s => (
-                <div key={s.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-[#102A43]">{s.project_name}</span>
-                    <ScoreBadge score={s.score} />
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">{s.fl_a_name} vs {s.fl_b_name}</div>
+                  <span className="text-xs text-[#555555]">{s.project_count} project{s.project_count !== 1 ? 's' : ''}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
 
-function MetricCard({ label, value, sub, color }) {
-  const colorMap = {
-    blue: 'border-[#1F6FB2] bg-blue-50',
-    green: 'border-[#1E7A3C] bg-green-50',
-    amber: 'border-amber-500 bg-amber-50',
-    red: 'border-[#A32A2A] bg-red-50',
-  };
-  return (
-    <div className={`rounded-xl p-6 border-l-4 ${colorMap[color] || colorMap.blue}`}>
-      <p className="text-sm font-medium text-[#555555]">{label}</p>
-      <p className="text-3xl font-bold text-[#102A43] mt-1">{value}</p>
-      <p className="text-xs text-[#555555] mt-1">{sub}</p>
-    </div>
-  );
-}
-
-function DecayCard({ title, description, lossPoint, value, status }) {
-  return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-bold text-[#102A43]">{title}</h3>
-          <p className="text-sm text-[#555555] mt-1">{description}</p>
+        {/* Objective Notes */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-[#102A43] uppercase tracking-wide">Recent Objective Notes</h2>
+            <a href="/projects" className="text-xs text-[#1F6FB2] hover:underline">View all</a>
+          </div>
+          {m.recentNotes.length === 0 ? (
+            <p className="text-sm text-[#555555]">No notes yet. <a href="/projects/new" className="text-[#1F6FB2] underline">Create one.</a></p>
+          ) : (
+            <div className="space-y-2">
+              {m.recentNotes.map(n => (
+                <a key={n.id} href={`/projects/${n.id}`} className="block py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 -mx-2 px-2 rounded">
+                  <div className="text-sm font-medium text-[#102A43]">{n.project_name}</div>
+                  <div className="text-xs text-[#555555] mt-0.5 line-clamp-1">{n.objective}</div>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
-        <span className="text-xs bg-[#EAF1F8] text-[#1F6FB2] px-2 py-1 rounded font-medium">{lossPoint}</span>
       </div>
-      {value !== undefined && value !== null && (
-        <p className="text-4xl font-bold text-[#102A43] mt-4">{value}%</p>
-      )}
-      <p className={`text-xs mt-3 font-medium ${status === 'measuring' ? 'text-[#1E7A3C]' : status === 'next phase' ? 'text-gray-400' : 'text-amber-600'}`}>
-        {status === 'measuring' ? 'Measuring' : status === 'next phase' ? 'Next phase' : 'Awaiting data'}
-      </p>
     </div>
   );
 }
 
-function ScoreBar({ label, count, total, color }) {
-  const pct = total > 0 ? (count / total) * 100 : 0;
+function StatCard({ value, label, sub, highlight }) {
+  return (
+    <div className={`rounded-lg border p-5 ${highlight ? 'bg-[#102A43] border-[#102A43]' : 'bg-white border-gray-200'}`}>
+      <p className={`text-3xl font-bold ${highlight ? 'text-white' : 'text-[#102A43]'}`}>{value}</p>
+      <p className={`text-sm mt-1 ${highlight ? 'text-[#EAF1F8]' : 'text-[#555555]'}`}>{label}</p>
+      {sub && <p className={`text-xs mt-0.5 ${highlight ? 'text-[#EAF1F8]/60' : 'text-gray-400'}`}>{sub}</p>}
+    </div>
+  );
+}
+
+function ScoreBlock({ color, label, sublabel, count, total }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div className="flex-1">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-[#555555]">{label}</span>
-        <span className="font-semibold text-[#102A43]">{count}</span>
+      <div className="flex items-baseline gap-2 mb-1">
+        <div className={`w-3 h-3 rounded-full ${color}`} />
+        <span className="text-sm font-medium text-[#102A43]">{label}</span>
+        <span className="text-xs text-[#555555]">{sublabel}</span>
       </div>
-      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-bold text-[#102A43]">{count}</span>
+        <span className="text-xs text-gray-400">{pct}%</span>
+      </div>
+      <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2">
+        <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
       </div>
     </div>
-  );
-}
-
-function ScoreBadge({ score }) {
-  const map = {
-    green: 'bg-[#1E7A3C] text-white',
-    amber: 'bg-amber-500 text-white',
-    red: 'bg-[#A32A2A] text-white',
-  };
-  return (
-    <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${map[score] || 'bg-gray-200'}`}>
-      {score}
-    </span>
   );
 }

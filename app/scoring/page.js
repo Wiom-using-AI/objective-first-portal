@@ -4,17 +4,15 @@ import { useState, useEffect } from 'react';
 
 export default function ScoringPage() {
   const [scores, setScores] = useState([]);
-  const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     project_name: '', fl_a_name: '', fl_a_objective: '',
-    fl_b_name: '', fl_b_objective: '', score: '', gap_note: '', scored_by_id: '',
+    fl_b_name: '', fl_b_objective: '', score: '', gap_note: '', scored_by: '',
   });
 
   useEffect(() => {
     fetch('/api/scores').then(r => r.json()).then(setScores);
-    fetch('/api/users').then(r => r.json()).then(setUsers);
   }, []);
 
   function update(field, value) {
@@ -29,175 +27,167 @@ export default function ScoringPage() {
       const res = await fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          scored_by_id: form.scored_by_id ? parseInt(form.scored_by_id) : null,
-        }),
+        body: JSON.stringify(form),
       });
       if (res.ok) {
         const updated = await fetch('/api/scores').then(r => r.json());
         setScores(updated);
         setShowForm(false);
-        setForm({ project_name: '', fl_a_name: '', fl_a_objective: '', fl_b_name: '', fl_b_objective: '', score: '', gap_note: '', scored_by_id: '' });
+        setForm({ project_name: '', fl_a_name: '', fl_a_objective: '', fl_b_name: '', fl_b_objective: '', score: '', gap_note: '', scored_by: '' });
       }
     } finally {
       setLoading(false);
     }
   }
 
-  const greenCount = scores.filter(s => s.score === 'green').length;
-  const amberCount = scores.filter(s => s.score === 'amber').length;
-  const redCount = scores.filter(s => s.score === 'red').length;
+  const green = scores.filter(s => s.score === 'green').length;
+  const amber = scores.filter(s => s.score === 'amber').length;
+  const red = scores.filter(s => s.score === 'red').length;
   const total = scores.length;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-[#102A43]">Alignment Scoring</h1>
-          <p className="text-[#555555] mt-1">Compare cross-FL project objectives — score Green / Amber / Red.</p>
+          <h1 className="text-2xl font-bold text-[#102A43]">Alignment Scoring</h1>
+          <p className="text-sm text-[#555555] mt-1">Compare cross-FL project objectives — Green / Amber / Red.</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="px-6 py-3 bg-[#102A43] text-white rounded-lg hover:bg-[#1F6FB2] transition-colors font-semibold">
+        <button onClick={() => setShowForm(!showForm)} className="px-5 py-2.5 bg-[#102A43] text-white rounded-lg hover:bg-[#1F6FB2] transition-colors font-semibold text-sm">
           {showForm ? 'Cancel' : '+ Score a Project'}
         </button>
       </div>
 
       {/* Scoring Rule */}
-      <div className="bg-green-50 border-l-4 border-[#1E7A3C] rounded-r-xl p-5">
-        <p className="text-sm font-semibold text-[#1E7A3C] mb-1">SCORING RULE</p>
+      <div className="bg-green-50 border-l-4 border-[#1E7A3C] rounded-r-lg p-4">
+        <p className="text-xs font-semibold text-[#1E7A3C] uppercase tracking-wide mb-1">Scoring Rule</p>
         <p className="text-sm text-[#102A43]">
           A &quot;match&quot; = same outcome AND same success metric, in substance (not wording).
-          Score each pair <strong className="text-[#1E7A3C]">Green</strong> (match) /
-          <strong className="text-amber-600"> Amber</strong> (partial — same outcome, different metric, or vice versa) /
-          <strong className="text-[#A32A2A]"> Red</strong> (different).
+          <strong className="text-[#1E7A3C]"> Green</strong> = match,
+          <strong className="text-amber-600"> Amber</strong> = partial,
+          <strong className="text-[#A32A2A]"> Red</strong> = different.
         </p>
       </div>
 
       {/* Summary */}
       {total > 0 && (
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-[#1E7A3C]">{greenCount}</p>
-            <p className="text-sm text-[#1E7A3C] font-medium">Green (match)</p>
-            <p className="text-xs text-gray-500">{total > 0 ? Math.round((greenCount / total) * 100) : 0}%</p>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-amber-600">{amberCount}</p>
-            <p className="text-sm text-amber-600 font-medium">Amber (partial)</p>
-            <p className="text-xs text-gray-500">{total > 0 ? Math.round((amberCount / total) * 100) : 0}%</p>
-          </div>
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-[#A32A2A]">{redCount}</p>
-            <p className="text-sm text-[#A32A2A] font-medium">Red (different)</p>
-            <p className="text-xs text-gray-500">{total > 0 ? Math.round((redCount / total) * 100) : 0}%</p>
-          </div>
+          {[
+            { label: 'Green', sub: 'Match', count: green, color: 'border-[#1E7A3C] bg-green-50', text: 'text-[#1E7A3C]' },
+            { label: 'Amber', sub: 'Partial', count: amber, color: 'border-amber-500 bg-amber-50', text: 'text-amber-600' },
+            { label: 'Red', sub: 'Different', count: red, color: 'border-[#A32A2A] bg-red-50', text: 'text-[#A32A2A]' },
+          ].map(s => (
+            <div key={s.label} className={`rounded-lg border-l-4 p-4 ${s.color}`}>
+              <p className={`text-2xl font-bold ${s.text}`}>{s.count}</p>
+              <p className={`text-sm font-medium ${s.text}`}>{s.label}</p>
+              <p className="text-xs text-gray-500">{total > 0 ? Math.round((s.count / total) * 100) : 0}%</p>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 space-y-4">
-          <h3 className="font-bold text-[#102A43] text-lg">Score a Cross-FL Project</h3>
-          <div>
-            <label className="block text-sm font-medium text-[#555555] mb-1">Cross-FL Project Name</label>
-            <input type="text" value={form.project_name} onChange={e => update('project_name', e.target.value)}
-              placeholder="Project name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
-          </div>
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[#102A43] uppercase tracking-wide">Score a Cross-FL Project</h3>
+
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-[#555555] mb-1">Cross-FL Project Name</label>
+              <input type="text" value={form.project_name} onChange={e => update('project_name', e.target.value)}
+                placeholder="Project name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
+            </div>
             <div>
-              <label className="block text-sm font-medium text-[#555555] mb-1">FL A Name</label>
+              <label className="block text-xs font-medium text-[#555555] mb-1">FL A Name</label>
               <input type="text" value={form.fl_a_name} onChange={e => update('fl_a_name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
+                placeholder="Enter name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#555555] mb-1">FL B Name</label>
+              <label className="block text-xs font-medium text-[#555555] mb-1">FL B Name</label>
               <input type="text" value={form.fl_b_name} onChange={e => update('fl_b_name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
+                placeholder="Enter name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#555555] mb-1">FL A&apos;s Objective</label>
+              <label className="block text-xs font-medium text-[#555555] mb-1">FL A&apos;s Objective</label>
               <textarea value={form.fl_a_objective} onChange={e => update('fl_a_objective', e.target.value)}
-                rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
+                rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#555555] mb-1">FL B&apos;s Objective</label>
+              <label className="block text-xs font-medium text-[#555555] mb-1">FL B&apos;s Objective</label>
               <textarea value={form.fl_b_objective} onChange={e => update('fl_b_objective', e.target.value)}
-                rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
+                rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
             </div>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-[#555555] mb-2">Score</label>
+            <label className="block text-xs font-medium text-[#555555] mb-2">Score</label>
             <div className="flex gap-3">
               {[['green', 'Green — Match', 'bg-[#1E7A3C]'], ['amber', 'Amber — Partial', 'bg-amber-500'], ['red', 'Red — Different', 'bg-[#A32A2A]']].map(([val, label, bg]) => (
                 <button key={val} type="button" onClick={() => update('score', val)}
-                  className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${form.score === val ? `${bg} text-white shadow-lg scale-105` : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  className={`flex-1 py-2.5 rounded-lg font-semibold text-xs transition-all ${form.score === val ? `${bg} text-white scale-[1.02]` : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                   {label}
                 </button>
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[#555555] mb-1">Gap Note (optional)</label>
-            <textarea value={form.gap_note} onChange={e => update('gap_note', e.target.value)}
-              placeholder="What specifically is different?" rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]" />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[#555555] mb-1">Gap Note (optional)</label>
+              <textarea value={form.gap_note} onChange={e => update('gap_note', e.target.value)}
+                placeholder="What specifically is different?" rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#555555] mb-1">Scored By</label>
+              <input type="text" value={form.scored_by} onChange={e => update('scored_by', e.target.value)}
+                placeholder="Your name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2] text-sm" />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[#555555] mb-1">Scored By</label>
-            <select value={form.scored_by_id} onChange={e => update('scored_by_id', e.target.value)}
-              className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F6FB2]">
-              <option value="">Select...</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
+
           <div className="flex justify-end">
-            <button type="submit" disabled={loading} className="px-8 py-3 bg-[#102A43] text-white rounded-lg hover:bg-[#1F6FB2] transition-colors font-semibold disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#102A43] text-white rounded-lg hover:bg-[#1F6FB2] transition-colors font-semibold text-sm disabled:opacity-50">
               {loading ? 'Saving...' : 'Save Score'}
             </button>
           </div>
         </form>
       )}
 
-      {/* Scores Table */}
-      {scores.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full">
+      {/* Table */}
+      {scores.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#1F6FB2] text-white">
-                <th className="px-4 py-3 text-left text-sm font-semibold">Cross-FL Project</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">FL A Objective</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">FL B Objective</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold">G / A / R</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Gap Note</th>
+              <tr className="bg-[#102A43] text-white">
+                <th className="px-4 py-3 text-left font-semibold text-xs">Project</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs">FL A</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs">FL B</th>
+                <th className="px-4 py-3 text-center font-semibold text-xs">Score</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs">Gap</th>
               </tr>
             </thead>
             <tbody>
               {scores.map(s => (
-                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-[#102A43] text-sm">{s.project_name}</td>
-                  <td className="px-4 py-3 text-sm text-[#555555]">
-                    <span className="font-medium">{s.fl_a_name}:</span> {s.fl_a_objective}
+                <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-[#102A43]">{s.project_name}</td>
+                  <td className="px-4 py-3 text-[#555555]">
+                    <span className="font-medium text-[#102A43]">{s.fl_a_name}</span>
+                    {s.fl_a_objective && <p className="text-xs mt-0.5 line-clamp-2">{s.fl_a_objective}</p>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-[#555555]">
-                    <span className="font-medium">{s.fl_b_name}:</span> {s.fl_b_objective}
+                  <td className="px-4 py-3 text-[#555555]">
+                    <span className="font-medium text-[#102A43]">{s.fl_b_name}</span>
+                    {s.fl_b_objective && <p className="text-xs mt-0.5 line-clamp-2">{s.fl_b_objective}</p>}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-block w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center ${
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold text-white ${
                       s.score === 'green' ? 'bg-[#1E7A3C]' : s.score === 'amber' ? 'bg-amber-500' : 'bg-[#A32A2A]'
                     }`}>
                       {s.score[0].toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-[#555555]">{s.gap_note || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-[#555555]">{s.gap_note || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center text-[#555555]">
-          No alignment scores yet. Click &quot;Score a Project&quot; to start.
         </div>
       )}
     </div>
