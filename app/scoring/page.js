@@ -6,12 +6,26 @@ export default function ScoringPage() {
   const [data, setData] = useState({ pairs: [], totalScored: 0, totalUnscored: 0 });
   const [scoring, setScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   function load() {
-    fetch('/api/autoscore').then(r => r.json()).then(setData);
+    fetch('/api/autoscore').then(r => {
+      if (r.status === 403) { setAccessDenied(true); return null; }
+      return r.json();
+    }).then(d => { if (d) setData(d); });
   }
 
   useEffect(() => { load(); }, []);
+
+  if (accessDenied) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-xl font-bold text-gray-900">Admin Access Required</h2>
+        <p className="text-sm text-gray-500 mt-2">Only the admin can view alignment scoring.</p>
+        <a href="/" className="inline-block mt-4 px-5 py-2.5 bg-[#E91E63] text-white rounded-lg text-sm font-medium">Back to Dashboard</a>
+      </div>
+    );
+  }
 
   async function runAutoScore() {
     setScoring(true);

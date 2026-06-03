@@ -4,9 +4,14 @@ import { useState, useEffect } from 'react';
 
 export default function TeamPage() {
   const [submissions, setSubmissions] = useState([]);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    fetch('/api/submissions').then(r => r.json()).then(data => {
+    fetch('/api/submissions').then(r => {
+      if (r.status === 403) { setAccessDenied(true); return []; }
+      return r.json();
+    }).then(data => {
+      if (!Array.isArray(data)) return;
       const grouped = {};
       for (const s of data) {
         if (!grouped[s.submitter_name]) {
@@ -23,6 +28,16 @@ export default function TeamPage() {
       setSubmissions(Object.values(grouped));
     });
   }, []);
+
+  if (accessDenied) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-xl font-bold text-gray-900">Admin Access Required</h2>
+        <p className="text-sm text-gray-500 mt-2">Only the admin can view team submissions.</p>
+        <a href="/" className="inline-block mt-4 px-5 py-2.5 bg-[#E91E63] text-white rounded-lg text-sm font-medium">Back to Dashboard</a>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

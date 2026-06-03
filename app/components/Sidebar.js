@@ -6,11 +6,11 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: DashboardIcon },
   { href: '/submit', label: 'Submit Projects', icon: SubmitIcon },
-  { href: '/scoring', label: 'Alignment Scoring', icon: ScoringIcon },
-  { href: '/team', label: 'Team', icon: TeamIcon },
+  { href: '/scoring', label: 'Alignment Scoring', icon: ScoringIcon, adminOnly: true },
+  { href: '/team', label: 'Team', icon: TeamIcon, adminOnly: true },
 ];
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, admin }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -30,7 +30,7 @@ export default function Sidebar({ user }) {
 
       {/* Nav */}
       <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-y-auto">
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS.filter(item => !item.adminOnly || admin).map(item => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
             <a

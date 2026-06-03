@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import getDb from '../../../lib/db';
+import { auth, isAdmin } from '../../../lib/auth';
 import { detectAllPairs, getUnscoredPairs, scoreObjectivePair } from '../../../lib/autoscore';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET: Return all cross-FL pairs (exact + fuzzy name matches) and their scores.
+ * GET: Return all cross-functional pairs and scores. Admin only.
  */
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(session.user.email)) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
   const db = getDb();
 
   const pairs = await detectAllPairs(db);
@@ -37,9 +42,13 @@ export async function GET() {
 }
 
 /**
- * POST: Trigger auto-scoring for all unscored pairs.
+ * POST: Trigger auto-scoring. Admin only.
  */
 export async function POST() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(session.user.email)) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
   const db = getDb();
 
   if (!process.env.WIOM_PORTAL_ANTHROPIC_KEY && !process.env.ANTHROPIC_API_KEY) {

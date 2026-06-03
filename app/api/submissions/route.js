@@ -1,15 +1,30 @@
 import { NextResponse } from 'next/server';
 import getDb from '../../../lib/db';
+import { auth, isAdmin } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const db = getDb();
-  const subs = db.prepare('SELECT * FROM submissions ORDER BY submitted_at DESC').all();
-  return NextResponse.json(subs);
+
+  if (isAdmin(session.user.email)) {
+    // Admin sees everything
+    const subs = db.prepare('SELECT * FROM submissions ORDER BY submitted_at DESC').all();
+    return NextResponse.json(subs);
+  } else {
+    // Non-admin only sees their own submissions
+    const subs = db.prepare('SELECT * FROM submissions WHERE submitter_email = ? ORDER BY submitted_at DESC').all(session.user.email);
+    return NextResponse.json(subs);
+  }
 }
 
 export async function POST(req) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const db = getDb();
   const { name, email, role, function: func, projects } = await req.json();
   if (!name || !projects || !projects.length) {
