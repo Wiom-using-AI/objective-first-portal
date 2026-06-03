@@ -10,9 +10,13 @@ const NAV_ITEMS = [
   { href: '/team', label: 'Team', icon: TeamIcon },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ user }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
 
   return (
     <aside className={`fixed top-0 left-0 h-screen bg-[#1A1A2E] text-white flex flex-col transition-all duration-300 z-40 ${collapsed ? 'w-16' : 'w-60'}`}>
@@ -46,6 +50,30 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* User + Sign out */}
+      <div className="border-t border-white/10 px-3 py-3 shrink-0">
+        {!collapsed ? (
+          <div className="flex items-center gap-2.5">
+            {user?.image ? (
+              <img src={user.image} alt="" className="w-8 h-8 rounded-full shrink-0" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-8 h-8 bg-[#E91E63]/30 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold">{initials}</div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">{user?.name}</p>
+              <p className="text-[10px] text-white/40 truncate">{user?.email}</p>
+            </div>
+            <a href="/api/auth/signout" title="Sign out" className="text-white/30 hover:text-white transition-colors shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            </a>
+          </div>
+        ) : (
+          <a href="/api/auth/signout" title="Sign out" className="flex items-center justify-center text-white/30 hover:text-white transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </a>
+        )}
+      </div>
+
       {/* Collapse */}
       <button
         onClick={() => setCollapsed(!collapsed)}
@@ -64,9 +92,6 @@ function DashboardIcon({ className }) {
 }
 function SubmitIcon({ className }) {
   return (<svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>);
-}
-function LibraryIcon({ className }) {
-  return (<svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>);
 }
 function ScoringIcon({ className }) {
   return (<svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>);
