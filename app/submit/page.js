@@ -71,7 +71,7 @@ export default function SubmitPage() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">FL Project &amp; Objective Submission</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Project &amp; Objective Submission</h1>
         <p className="text-sm text-gray-500 mt-1">Blind baselining — complete this independently, without checking with anyone else.</p>
       </div>
 
@@ -167,7 +167,7 @@ export default function SubmitPage() {
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm text-[gray-500]">
                   <input type="checkbox" checked={p.is_cross_fl} onChange={e => updateRow(i, 'is_cross_fl', e.target.checked)} className="rounded border-gray-300 text-[#E91E63] focus:ring-[#E91E63]" />
-                  <span className="text-xs">Cross-FL project?</span>
+                  <span className="text-xs">Cross-functional project?</span>
                 </label>
                 {p.is_cross_fl && (
                   <input

@@ -41,7 +41,7 @@ export default function ScoringPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Alignment Scoring</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Auto-detected cross-FL project pairs — scored by AI for objective alignment.
+            Auto-detected cross-functional project pairs — scored by AI for objective alignment.
           </p>
         </div>
         {unscored.length > 0 && (
@@ -56,7 +56,7 @@ export default function ScoringPage() {
       <div className="bg-pink-50 border-l-4 border-[#E91E63] rounded-r-lg p-4">
         <p className="text-xs font-semibold text-[#E91E63] uppercase tracking-wide mb-1">How It Works</p>
         <p className="text-sm text-gray-700">
-          When two or more FLs submit the same project name, the system automatically detects the overlap and uses AI to compare their objectives.
+          When two or more Functional Heads submit the same project name, the system automatically detects the overlap and uses AI to compare their objectives.
           <strong className="text-[#1E7A3C]"> Green</strong> = same outcome &amp; metric,
           <strong className="text-amber-600"> Amber</strong> = partial match,
           <strong className="text-[#C62828]"> Red</strong> = different objectives.
@@ -92,9 +92,9 @@ export default function ScoringPage() {
       {/* No pairs */}
       {data.pairs.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <h3 className="text-base font-semibold text-gray-900">No Cross-FL Pairs Detected</h3>
+          <h3 className="text-base font-semibold text-gray-900">No Cross-Functional Pairs Detected</h3>
           <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-            When two or more FLs submit the same project name on the <a href="/submit" className="text-[#E91E63] underline">submission page</a>,
+            When two or more Functional Heads submit the same project name on the <a href="/submit" className="text-[#E91E63] underline">submission page</a>,
             their objectives will be compared here automatically.
           </p>
         </div>

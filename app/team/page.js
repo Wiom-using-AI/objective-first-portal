@@ -29,7 +29,7 @@ export default function TeamPage() {
       {submissions.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <h3 className="text-base font-semibold text-[gray-900]">No Submissions Yet</h3>
-          <p className="text-sm text-[gray-500] mt-1">Once FLs submit on the <a href="/submit" className="text-[#E91E63] underline">submission page</a>, they will appear here.</p>
+          <p className="text-sm text-gray-500 mt-1">Once Functional Heads submit on the <a href="/submit" className="text-[#E91E63] underline">submission page</a>, they will appear here.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -52,7 +52,7 @@ export default function TeamPage() {
                   <div key={p.id} className="bg-gray-50 rounded px-3 py-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-[gray-900]">{p.project_name}</span>
-                      {p.is_cross_fl === 1 && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Cross-FL</span>}
+                      {p.is_cross_fl === 1 && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Cross-functional</span>}
                     </div>
                     <p className="text-xs text-[gray-500] mt-0.5">{p.objective}</p>
                     {p.success_metric && <p className="text-xs text-[#E91E63] mt-0.5">{p.success_metric}</p>}

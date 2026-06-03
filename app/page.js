@@ -42,7 +42,7 @@ export default async function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard value={m.flsSubmitted} label="FLs Submitted" />
+        <StatCard value={m.flsSubmitted} label="Functional Heads Submitted" />
         <StatCard value={m.totalProjects} label="Projects Logged" />
         <StatCard value={m.activeNotes} label="Objective Notes" />
         <StatCard
