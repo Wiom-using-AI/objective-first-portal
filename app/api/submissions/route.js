@@ -11,17 +11,17 @@ export async function GET() {
 
 export async function POST(req) {
   const db = getDb();
-  const { name, function: func, projects } = await req.json();
+  const { name, email, role, function: func, projects } = await req.json();
   if (!name || !projects || !projects.length) {
     return NextResponse.json({ error: 'name and projects are required' }, { status: 400 });
   }
 
   const insert = db.prepare(
-    'INSERT INTO submissions (submitter_name, submitter_function, project_name, objective, success_metric, is_cross_fl, cross_fl_who) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO submissions (submitter_name, submitter_email, submitter_role, submitter_function, project_name, objective, success_metric, is_cross_fl, cross_fl_who) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const insertMany = db.transaction((list) => {
     for (const p of list) {
-      insert.run(name, func || '', p.project_name, p.objective, p.success_metric || '', p.is_cross_fl ? 1 : 0, p.cross_fl_who || '');
+      insert.run(name, email || '', role || '', func || '', p.project_name, p.objective, p.success_metric || '', p.is_cross_fl ? 1 : 0, p.cross_fl_who || '');
     }
   });
   insertMany(projects);
