@@ -42,7 +42,7 @@ export default function LoginPage({ searchParams }) {
           </button>
         </form>
 
-        <p className="text-xs text-gray-400 mt-5">Only <strong>@wiom.in</strong> accounts are allowed.</p>
+        <p className="text-xs text-gray-400 mt-5">Only <strong>@wiom.in</strong> and <strong>@i2e1.com</strong> accounts are allowed.</p>
       </div>
     </div>
   );
